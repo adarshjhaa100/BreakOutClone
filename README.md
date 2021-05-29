@@ -1,6 +1,7 @@
 # BreakOutClone
 A breakout clone created using olcPixelGameEngine 
 
+![Alt text](/Screenshots/commit1shot.png?raw=true "Image Screenshot")
 
 
 
