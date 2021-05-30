@@ -2,6 +2,7 @@
 #include "olcPixelGameEngine.h"
 #include <sstream>
 
+// convert number to string as to_string is problematic 
 template <typename T>
 std::string NumberToString(T Number)
 {
@@ -10,9 +11,11 @@ std::string NumberToString(T Number)
 	return ss.str();
 }
 
-class BreakOut :public olc::PixelGameEngine {
+
+//Game class where the game field is represented using lines
+class BreakOutOld :public olc::PixelGameEngine {
 	public:
-	BreakOut() {
+	BreakOutOld() {
 		sAppName = "Break Out Clone";
 	}
 
@@ -77,15 +80,16 @@ class BreakOut :public olc::PixelGameEngine {
 		if (ballPos.x-ballSize <= 16 || ballPos.x+ballSize >=ScreenWidth()-16) ballVel.x *= -1.0f;
 
 
-		//In case ball passes the bat
+		//In case ball passes the bat, generate it in any random position
 		if (ballPos.y+ballSize >= ScreenHeight() - 16)
 		{	
 			missed++;
 			//generate ball at some random position(for simplicity generate at y<50)
-			ballPos = { 30.0f+50.0f*rand()/RAND_MAX , 60.0f+50.0f * rand()/RAND_MAX};
+			ballPos = { 100.0f+(rand()%50+1) , 70.0f+ (rand() % 50+1) };
 			//std::cout << rand()<<" ";
 			//reset velocity
 			ballVel = { 120.0f, 80.0f };
+			points = 0;
 			
 		}
 
@@ -171,6 +175,7 @@ class BreakOut :public olc::PixelGameEngine {
 		//dosplay objects
 		foregroudDisplay(fElapsedTime);
 		
+		//Method to display point
 		addPoint();
 
 		return true;
@@ -178,13 +183,113 @@ class BreakOut :public olc::PixelGameEngine {
 };
 
 
+//Game class where the game field is represented using tiles
+class BreakOutNew :public olc::PixelGameEngine {
+public:
+	BreakOutNew() {
+		sAppName = "Break out clone";
+	}
+
+private:
+	// Bat variables
+	float batPos = 20.0f;
+	float batWidth = 80.0f;
+	// as we have a large fps, bat moves too fast, so we use batSpeed
+	float batSpeed = 200.0f;
+
+	// variables for ball
+	olc::vf2d ballPos = { 40.0f, 30.0f };
+	float ballSize = 5.0f;
+	olc::vf2d ballVel = { 120.0f, 80.0f };
+
+	//Grid variables
+	olc::vi2d blockSize = { 16,16 };
+	//to store info of each block(just like a 2d array)
+	//a unique pointer stores pointer to object and gets deleted when obj gets out of scope
+	//its also called a smart pointer
+	std::unique_ptr<int[]> blocks;
+
+	//sprite for tile
+	std::unique_ptr<olc::Sprite> gridBorder;
+
+
+public:
+	bool OnUserCreate() override {
+		// we initialize our grid to a size of 24*30
+		//make unique is used to initialize a pointer
+		blocks = std::make_unique<int[]>(24*30);
+
+		//set block values
+		// borders will have some values, interior blocks will have 0 value
+		//for block at (x,y), set element at [c*y+x] value,here c=24
+		for (int y = 0; y < 30; y++) {
+			for (int x = 0; x < 24; x++) {
+				//for top, left right border
+				if (x == 0 || x == 23 || y == 0)
+					blocks[y * 24 + x] = 0;
+				else
+					blocks[y * 24 + x] = 100;
+				//target blocks of different colors 
+				if (x > 2 && x <= 20 && y > 3 && y <= 5)
+					blocks[y * 24 + x] = 1;
+				if (x > 2 && x <= 20 && y > 5 && y <= 7)
+					blocks[y * 24 + x] = 2;
+				if (x > 2 && x <= 20 && y > 7 && y <= 9)
+					blocks[y * 24 + x] = 3;				
+			}
+		}
+
+		//Load sprite
+		//gridBorder = std::make_unique<olc::Sprite>("./images/tut_tile.png");
+
+		//Load sprite sheet which is a set of sprites
+		gridBorder = std::make_unique<olc::Sprite>("./images/tut_tile_sheet.png");
+		return true;
+	}
+
+
+	void foregroundDisplay(float fElapsedTime) {
+		// column major order
+		for(int y=0;y<30;y++)
+			for (int x = 0; x < 24; x++) {
+
+				switch (blocks[24 * y + x]) {
+					case 100: break;
+					//Draw boundary(note the pixel will be from 0 to blocksize)
+						//Draw partial sprite: a partial sprite is a block off a sprite sheet
+						// takes posn of top corner pixel, 
+					default: DrawPartialSprite(
+							 olc::vi2d(x, y) * blockSize, 
+							 gridBorder.get(),
+							 olc::vi2d(blocks[24 * y + x], 0) * blockSize, 
+						     blockSize); 
+							 break;	
+				}
+			}
+	}
+
+
+	bool OnUserUpdate(float fElapsedTime) override {
+		// Set initial borders
+		Clear(olc::DARK_CYAN);
+
+		foregroundDisplay(fElapsedTime);
+
+		return true;
+	}
+
+};
+
+
+
+
 int main() {
-	BreakOut game;
+	BreakOutNew game;
 
 	//Note: to work with fixed time frames, we have some methods one of which is vsync
 	//demo.Construct(512, 480, 2, 2, false, true)
 
-	if (game.Construct(300, 300, 2, 2))
+	if (game.Construct(500, 300, 2, 2))
 		game.Start();
 
 	
