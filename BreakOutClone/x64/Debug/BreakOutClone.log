@@ -1,0 +1,4 @@
+﻿  BreakOutClone.cpp
+D:\cs\Advanced CS\Game Dev\Codes\Cpp\olc_tutorials\BreakOutClone\BreakOutClone\BreakOutClone.cpp(162,23): warning C4244: 'argument': conversion from 'float' to 'int32_t', possible loss of data
+D:\cs\Advanced CS\Game Dev\Codes\Cpp\olc_tutorials\BreakOutClone\BreakOutClone\BreakOutClone.cpp(295,35): warning C4244: 'argument': conversion from 'float' to 'int32_t', possible loss of data
+  BreakOutClone.vcxproj -> D:\cs\Advanced CS\Game Dev\Codes\Cpp\olc_tutorials\BreakOutClone\x64\Debug\BreakOutClone.exe

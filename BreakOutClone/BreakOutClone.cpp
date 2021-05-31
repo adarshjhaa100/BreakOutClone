@@ -197,10 +197,14 @@ private:
 	// as we have a large fps, bat moves too fast, so we use batSpeed
 	float batSpeed = 200.0f;
 
+	//We take ball as a rectangle and well look for collision with mid pt of all edges
 	// variables for ball
-	olc::vf2d ballPos = { 40.0f, 30.0f };
-	float ballSize = 5.0f;
-	olc::vf2d ballVel = { 120.0f, 80.0f };
+	olc::vf2d ballPos = { 0.0f, 0.0f };
+	olc::vf2d ballDir = { 0.0f,0.0f };
+	float ballSpeed = 10.0f;
+	float ballRadius = 5.0f;
+
+
 
 	//Grid variables
 	olc::vi2d blockSize = { 16,16 };
@@ -226,9 +230,9 @@ public:
 			for (int x = 0; x < 24; x++) {
 				//for top, left right border
 				if (x == 0 || x == 23 || y == 0)
-					blocks[y * 24 + x] = 0;
+					blocks[y * 24 + x] = 10;
 				else
-					blocks[y * 24 + x] = 100;
+					blocks[y * 24 + x] = 0;
 				//target blocks of different colors 
 				if (x > 2 && x <= 20 && y > 3 && y <= 5)
 					blocks[y * 24 + x] = 1;
@@ -244,6 +248,12 @@ public:
 
 		//Load sprite sheet which is a set of sprites
 		gridBorder = std::make_unique<olc::Sprite>("./images/tut_tile_sheet.png");
+		
+		//start the ball
+		float angle = -0.4f;
+		ballDir = { cos(angle), sin(angle) };
+		ballPos = { 10.5f, 13.0f };
+		
 		return true;
 	}
 
@@ -254,22 +264,100 @@ public:
 			for (int x = 0; x < 24; x++) {
 
 				switch (blocks[24 * y + x]) {
-					case 100: break;
+					case 0: break;
 					//Draw boundary(note the pixel will be from 0 to blocksize)
 						//Draw partial sprite: a partial sprite is a block off a sprite sheet
 						// takes posn of top corner pixel, 
-					default: DrawPartialSprite(
-							 olc::vi2d(x, y) * blockSize, 
-							 gridBorder.get(),
-							 olc::vi2d(blocks[24 * y + x], 0) * blockSize, 
-						     blockSize); 
-							 break;	
+					case 10: DrawPartialSprite(
+							olc::vi2d(x, y) * blockSize,
+							gridBorder.get(),
+							olc::vi2d(0, 0) * blockSize,
+							blockSize); break;
+					case 1: DrawPartialSprite(
+							olc::vi2d(x, y) * blockSize,
+							gridBorder.get(),
+							olc::vi2d(1, 0) * blockSize,
+							blockSize); break;
+					case 2: DrawPartialSprite(
+							olc::vi2d(x, y) * blockSize,
+							gridBorder.get(),
+							olc::vi2d(2, 0) * blockSize,
+							blockSize); break;
+					case 3: DrawPartialSprite(
+							olc::vi2d(x, y) * blockSize,
+							gridBorder.get(),
+							olc::vi2d(3, 0) * blockSize,
+							blockSize); break;		
 				}
 			}
+
+		//Draw circle
+		FillCircle(ballPos * blockSize, ballRadius, olc::GREEN);
 	}
 
 
+	//The processing happens in game env which is of 24x30
+	void backgroundProcessing(float fElapsedTime) {
+		// potential psn of ball to check if its already entered a tile
+		//Xf=Xi+u*t
+		olc::vf2d potentialBallPos = ballPos + ballDir * ballSpeed * fElapsedTime;
+		
+		//for testing collision at 4 sides, we need the mid pt of the sides of the ball
+		//x coord: mid point in game env of the rectangle length
+		//y coord: mid pt in game env of the rectangle height
+		olc::vf2d ballGameSize = {
+			ballRadius/blockSize.x, ballRadius/blockSize.y
+		};
+
+		//Lamda function in c. Here & denotes that variables are passed by ref
+		auto willCollide = [=](const olc::vf2d side) {
+			olc::vi2d point = potentialBallPos + ballGameSize*side;
+			auto& tile = blocks[point.y*24+point.x];
+
+			//in case we have empty tile
+			if (tile == 0)
+				return false;
+
+			//in case we have a colliding tile
+			else {
+				if (tile < 10)
+					tile--;
+				if (side.x == 0)
+					ballDir.y *= -1.0f;
+				if (side.y == 0)
+					ballDir.x *= -1.0f;
+			}
+			return true;
+		};
+		
+		
+		//rather than writing separate code for the all the four sides. we can
+		//put them in a single code using the following
+		bool hasCollided = false;
+		//L R T B
+		hasCollided |= willCollide(olc::vi2d(0, -1));
+		hasCollided |= willCollide(olc::vi2d(0, 1));
+		hasCollided |= willCollide(olc::vi2d(-1, 0));
+		hasCollided |= willCollide(olc::vi2d(1, 0));
+		
+
+		//bounce off the bottom(temporary)
+		if (ballPos.y >= 15.0f)
+			ballDir.y *= -1.0f;
+
+
+		ballPos += ballDir * ballSpeed * fElapsedTime;
+
+	}
+
+
+
+
+
 	bool OnUserUpdate(float fElapsedTime) override {
+		
+		backgroundProcessing(fElapsedTime);
+		
 		// Set initial borders
 		Clear(olc::DARK_CYAN);
 
@@ -289,7 +377,7 @@ int main() {
 	//Note: to work with fixed time frames, we have some methods one of which is vsync
 	//demo.Construct(512, 480, 2, 2, false, true)
 
-	if (game.Construct(500, 300, 2, 2))
+	if (game.Construct(500, 700, 1, 1))
 		game.Start();
 
 	
